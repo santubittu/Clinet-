@@ -1,12 +1,13 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { PlusCircle, Edit, Trash2, RefreshCw, Loader2 } from 'lucide-react'
+import { useToast } from "@/hooks/use-toast"
 import {
   Dialog,
   DialogContent,
@@ -17,420 +18,371 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { Search, UserPlus, RefreshCw, Trash2, Edit } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
-import { getClients, createClient, resetClientPassword, deleteClient } from "@/lib/actions"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Badge } from "@/components/ui/badge"
+import { useFormStatus } from "react-dom"
+import { createClient, deleteClient, getClients, updateClient, resetClientPassword } from "@/lib/actions"
+import { Client } from "@/lib/types"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { useRouter } from "next/navigation"
 
+// Client list page
 export default function ClientsPage() {
-  const { toast } = useToast()
   const [clients, setClients] = useState<Client[]>([])
-  const [searchQuery, setSearchQuery] = useState("")
-  const [isLoading, setIsLoading] = useState(true)
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false)
-  const [selectedClient, setSelectedClient] = useState<Client | null>(null)
-  const [newClient, setNewClient] = useState({
-    id: "",
-    name: "",
-    email: "",
-    phone: "",
-    address: "",
-    contactPerson: "",
-  })
-  const [tempPassword, setTempPassword] = useState("")
+  const [loading, setLoading] = useState(true)
+  const { toast } = useToast()
 
   useEffect(() => {
-    const loadClients = async () => {
-      try {
-        const data = await getClients()
-        setClients(data)
-      } catch (error) {
-        toast({
-          title: "Error",
-          description: "Failed to load clients",
-          variant: "destructive",
-        })
-      } finally {
-        setIsLoading(false)
-      }
+    const fetchClients = async () => {
+      setLoading(true)
+      const fetchedClients = await getClients()
+      setClients(fetchedClients)
+      setLoading(false)
     }
+    fetchClients()
+  }, [])
 
-    loadClients()
-  }, [toast])
+  const handleDelete = async (id: string) => {
+    const result = await deleteClient(id)
+    if (result.success) {
+      toast({ title: "Client deleted successfully!" })
+      setClients(clients.filter((client) => client.id !== id))
+    } else {
+      toast({ title: "Failed to delete client", description: result.error, variant: "destructive" })
+    }
+  }
 
-  const filteredClients = clients.filter(
-    (client) =>
-      client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      client.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      client.email.toLowerCase().includes(searchQuery.toLowerCase()),
+  const handleResetPassword = async (id: string) => {
+    const result = await resetClientPassword(id)
+    if (result.success) {
+      toast({
+        title: "Password Reset",
+        description: `Client password reset successfully. Temporary password: ${result.tempPassword}`,
+      })
+    } else {
+      toast({
+        title: "Password Reset Failed",
+        description: result.error || "An error occurred while resetting password.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="grid gap-6 p-6 md:p-8">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold">Clients</h1>
+          <Button disabled>
+            <PlusCircle className="mr-2 h-4 w-4" /> Add Client
+          </Button>
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Client List</CardTitle>
+            <CardDescription>Manage your client accounts.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-center h-48">
+              <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  return (
+    <div className="grid gap-6 p-6 md:p-8">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Clients</h1>
+        <AddClientDialog />
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Client List</CardTitle>
+          <CardDescription>Manage your client accounts.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Client ID</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Documents</TableHead>
+                <TableHead>Registered</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {clients.map((client) => (
+                <TableRow key={client.id}>
+                  <TableCell className="font-medium">{client.id}</TableCell>
+                  <TableCell>
+                    <Link href={`/admin/clients/${client.id}`} className="text-blue-600 hover:underline">
+                      {client.name}
+                    </Link>
+                  </TableCell>
+                  <TableCell>{client.email}</TableCell>
+                  <TableCell>
+                    <Badge
+                      className={`capitalize ${
+                        client.status === "active"
+                          ? "bg-green-100 text-green-800"
+                          : client.status === "pending"
+                          ? "bg-yellow-100 text-yellow-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {client.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{client.documents}</TableCell>
+                  <TableCell>{client.isRegistered ? "Yes" : "No"}</TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <EditClientDialog client={client} onClientUpdated={() => {}} />
+                      <Button variant="outline" size="icon" onClick={() => handleResetPassword(client.id)}>
+                        <RefreshCw className="h-4 w-4" />
+                        <span className="sr-only">Reset Password</span>
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="destructive" size="icon">
+                            <Trash2 className="h-4 w-4" />
+                            <span className="sr-only">Delete Client</span>
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This action cannot be undone. This will permanently delete the client account and all
+                              associated documents.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDelete(client.id)}>Delete</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {clients.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center text-gray-500">
+                    No clients found.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
   )
+}
 
-  const handleAddClient = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
+// Add Client Dialog Component
+function AddClientDialog() {
+  const [isOpen, setIsOpen] = useState(false)
+  const { toast } = useToast()
+  const { pending } = useFormStatus()
 
-    try {
-      const formData = new FormData()
-      formData.append("name", newClient.name)
-      formData.append("email", newClient.email)
-      formData.append("id", newClient.id)
-      formData.append("phone", newClient.phone)
-      formData.append("address", newClient.address)
-      formData.append("contactPerson", newClient.contactPerson)
-
-      const result = await createClient(formData)
-
-      if (result.error) {
-        toast({
-          title: "Error",
-          description: result.error,
-          variant: "destructive",
-        })
-        return
-      }
-
-      setClients([...clients, result.client])
-      setTempPassword(result.tempPassword)
-      setNewClient({ id: "", name: "", email: "", phone: "", address: "", contactPerson: "" })
-      setIsAddDialogOpen(false)
-
+  const handleSubmit = async (formData: FormData) => {
+    const result = await createClient(formData)
+    if (result.client) {
       toast({
-        title: "Success",
-        description: "Client created successfully",
+        title: "Client created successfully!",
+        description: result.tempPassword
+          ? `Temporary password: ${result.tempPassword}. Please provide this to the client.`
+          : "Client will need to complete registration.",
       })
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to create client",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleDeleteClient = async () => {
-    if (!selectedClient) return
-
-    setIsLoading(true)
-
-    try {
-      const result = await deleteClient(selectedClient.id)
-
-      if (result.error) {
-        toast({
-          title: "Error",
-          description: result.error,
-          variant: "destructive",
-        })
-        return
-      }
-
-      setClients(clients.filter((client) => client.id !== selectedClient.id))
-      setIsDeleteDialogOpen(false)
-
-      toast({
-        title: "Success",
-        description: "Client deleted successfully",
-      })
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to delete client",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleResetPassword = async () => {
-    if (!selectedClient) return
-
-    setIsLoading(true)
-
-    try {
-      const result = await resetClientPassword(selectedClient.id)
-
-      if (result.error) {
-        toast({
-          title: "Error",
-          description: result.error,
-          variant: "destructive",
-        })
-        return
-      }
-
-      setTempPassword(result.tempPassword)
-      setIsResetDialogOpen(false)
-
-      toast({
-        title: "Success",
-        description: "Password reset successfully",
-      })
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to reset password",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
+      setIsOpen(false)
+    } else {
+      toast({ title: "Failed to create client", description: result.error, variant: "destructive" })
     }
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Clients</h1>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <UserPlus className="mr-2 h-4 w-4" />
-              Add Client
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add New Client</DialogTitle>
-              <DialogDescription>Create a new client account and generate a unique client ID.</DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleAddClient}>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="client-id">Client ID (Optional)</Label>
-                  <Input
-                    id="client-id"
-                    value={newClient.id}
-                    onChange={(e) => setNewClient({ ...newClient, id: e.target.value })}
-                    placeholder="Leave blank to auto-generate"
-                  />
-                  <p className="text-xs text-gray-500">If left blank, a unique ID will be automatically generated</p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="client-name">Client Name</Label>
-                  <Input
-                    id="client-name"
-                    value={newClient.name}
-                    onChange={(e) => setNewClient({ ...newClient, name: e.target.value })}
-                    placeholder="Enter client name"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="client-email">Client Email</Label>
-                  <Input
-                    id="client-email"
-                    type="email"
-                    value={newClient.email}
-                    onChange={(e) => setNewClient({ ...newClient, email: e.target.value })}
-                    placeholder="Enter client email"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="client-phone">Phone Number (Optional)</Label>
-                  <Input
-                    id="client-phone"
-                    value={newClient.phone}
-                    onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })}
-                    placeholder="Enter phone number"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="client-contact">Contact Person (Optional)</Label>
-                  <Input
-                    id="client-contact"
-                    value={newClient.contactPerson}
-                    onChange={(e) => setNewClient({ ...newClient, contactPerson: e.target.value })}
-                    placeholder="Enter primary contact name"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="client-address">Address (Optional)</Label>
-                  <Input
-                    id="client-address"
-                    value={newClient.address}
-                    onChange={(e) => setNewClient({ ...newClient, address: e.target.value })}
-                    placeholder="Enter client address"
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} type="button">
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={isLoading}>
-                  {isLoading ? "Creating..." : "Create Client"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-        {tempPassword && (
-          <Dialog open={true} onOpenChange={() => setTempPassword("")}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Temporary Password Generated</DialogTitle>
-                <DialogDescription>Please save this temporary password. It will not be shown again.</DialogDescription>
-              </DialogHeader>
-              <div className="py-4">
-                <div className="bg-gray-100 p-3 rounded-md font-mono text-center">{tempPassword}</div>
-                <p className="text-sm text-gray-500 mt-2">
-                  The client will be prompted to change this password on first login.
-                </p>
-              </div>
-              <DialogFooter>
-                <Button onClick={() => setTempPassword("")}>Close</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        )}
-      </div>
-
-      <div className="flex items-center space-x-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-          <Input
-            placeholder="Search clients by name, ID, or email..."
-            className="pl-8"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-      </div>
-
-      <div className="border rounded-md">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Client ID</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-center">Documents</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                  Loading clients...
-                </TableCell>
-              </TableRow>
-            ) : filteredClients.length > 0 ? (
-              filteredClients.map((client) => (
-                <TableRow key={client.id}>
-                  <TableCell className="font-medium">{client.id}</TableCell>
-                  <TableCell>{client.name}</TableCell>
-                  <TableCell>{client.email}</TableCell>
-                  <TableCell>
-                    <span
-                      className={`capitalize ${
-                        client.status === "active"
-                          ? "text-green-600"
-                          : client.status === "inactive"
-                            ? "text-red-600"
-                            : "text-yellow-600"
-                      }`}
-                    >
-                      {client.status || "Active"}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-center">{client.documents}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          setSelectedClient(client)
-                          setIsResetDialogOpen(true)
-                        }}
-                      >
-                        <RefreshCw className="h-4 w-4" />
-                      </Button>
-                      <Link href={`/admin/clients/${client.id}`}>
-                        <Button variant="ghost" size="icon">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          setSelectedClient(client)
-                          setIsDeleteDialogOpen(true)
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                  No clients found matching your search
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
-      {/* Reset Password Dialog */}
-      <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Reset Client Password</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to reset the password for {selectedClient?.name}?
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <p className="text-sm text-gray-500">
-              This will generate a new temporary password and invalidate the current password.
-            </p>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <Button>
+          <PlusCircle className="mr-2 h-4 w-4" /> Add Client
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Add New Client</DialogTitle>
+          <DialogDescription>Fill in the details for the new client account.</DialogDescription>
+        </DialogHeader>
+        <form action={handleSubmit}>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">
+                Name
+              </Label>
+              <Input id="name" name="name" placeholder="Client Name" className="col-span-3" required />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="email" className="text-right">
+                Email
+              </Label>
+              <Input id="email" name="email" type="email" placeholder="client@example.com" className="col-span-3" required />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="username" className="text-right">
+                Username (Optional)
+              </Label>
+              <Input id="username" name="username" placeholder="Unique username" className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="password" className="text-right">
+                Password (Optional)
+              </Label>
+              <Input id="password" name="password" type="password" placeholder="Auto-generate if empty" className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="phone" className="text-right">
+                Phone
+              </Label>
+              <Input id="phone" name="phone" placeholder="+1 (123) 456-7890" className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="contactPerson" className="text-right">
+                Contact Person
+              </Label>
+              <Input id="contactPerson" name="contactPerson" placeholder="John Doe" className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="address" className="text-right">
+                Address
+              </Label>
+              <Input id="address" name="address" placeholder="123 Main St, City, State" className="col-span-3" />
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsResetDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="default" onClick={handleResetPassword} disabled={isLoading}>
-              {isLoading ? "Resetting..." : "Reset Password"}
+            <Button type="submit" disabled={pending}>
+              {pending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Create Client
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
-      {/* Delete Client Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Client</DialogTitle>
-            <DialogDescription>Are you sure you want to delete {selectedClient?.name}?</DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <p className="text-sm text-gray-500">
-              This action cannot be undone. This will permanently delete the client account and remove all associated
-              data.
-            </p>
+// Edit Client Dialog Component
+function EditClientDialog({ client, onClientUpdated }: { client: Client; onClientUpdated: () => void }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const { toast } = useToast()
+  const { pending } = useFormStatus()
+
+  const handleSubmit = async (formData: FormData) => {
+    const result = await updateClient(formData)
+    if (result.success) {
+      toast({ title: "Client updated successfully!" })
+      setIsOpen(false)
+      onClientUpdated() // Callback to refresh client list if needed
+    } else {
+      toast({ title: "Failed to update client", description: result.error, variant: "destructive" })
+    }
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="icon">
+          <Edit className="h-4 w-4" />
+          <span className="sr-only">Edit Client</span>
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Edit Client</DialogTitle>
+          <DialogDescription>Make changes to client information here.</DialogDescription>
+        </DialogHeader>
+        <form action={handleSubmit}>
+          <input type="hidden" name="id" value={client.id} />
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">
+                Name
+              </Label>
+              <Input id="name" name="name" defaultValue={client.name} className="col-span-3" required />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="email" className="text-right">
+                Email
+              </Label>
+              <Input id="email" name="email" type="email" defaultValue={client.email} className="col-span-3" required />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="phone" className="text-right">
+                Phone
+              </Label>
+              <Input id="phone" name="phone" defaultValue={client.phone || ""} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="contactPerson" className="text-right">
+                Contact Person
+              </Label>
+              <Input id="contactPerson" name="contactPerson" defaultValue={client.contactPerson || ""} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="address" className="text-right">
+                Address
+              </Label>
+              <Input id="address" name="address" defaultValue={client.address || ""} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="username" className="text-right">
+                Username
+              </Label>
+              <Input id="username" name="username" defaultValue={client.username || ""} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="status" className="text-right">
+                Status
+              </Label>
+              <Select name="status" defaultValue={client.status}>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={handleDeleteClient} disabled={isLoading}>
-              {isLoading ? "Deleting..." : "Delete Client"}
+            <Button type="submit" disabled={pending}>
+              {pending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Save changes
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }

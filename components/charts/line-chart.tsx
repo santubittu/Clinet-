@@ -1,90 +1,62 @@
 "use client"
 
-import { useRef } from "react"
-import { motion } from "framer-motion"
-import { Line } from "react-chartjs-2"
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  type ChartOptions,
-} from "chart.js"
-
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend)
+import { CartesianGrid, Line, LineChart as RechartsLineChart, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts"
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 
 interface LineChartProps {
-  title?: string
-  data: {
-    labels: string[]
-    datasets: {
-      label: string
-      data: number[]
-      borderColor: string
-      backgroundColor: string
-      tension?: number
-      fill?: boolean
-    }[]
-  }
-  height?: number
+  data: { [key: string]: any }[]
+  dataKey: string
+  categoryKey: string
+  secondaryDataKey?: string
+  chartColors?: string[]
 }
 
-export function LineChart({ title, data, height = 300 }: LineChartProps) {
-  const chartRef = useRef<ChartJS>(null)
-
-  const options: ChartOptions<"line"> = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: "top" as const,
-      },
-      title: {
-        display: !!title,
-        text: title || "",
-      },
-      tooltip: {
-        backgroundColor: "rgba(0, 0, 0, 0.8)",
-        padding: 12,
-        titleFont: {
-          size: 14,
-        },
-        bodyFont: {
-          size: 13,
-        },
-        cornerRadius: 4,
-      },
+export function LineChart({
+  data,
+  dataKey,
+  categoryKey,
+  secondaryDataKey,
+  chartColors = ["hsl(var(--chart-1))", "hsl(var(--chart-2))"],
+}: LineChartProps) {
+  const chartConfig = {
+    [dataKey]: {
+      label: dataKey.charAt(0).toUpperCase() + dataKey.slice(1),
+      color: chartColors[0],
     },
-    scales: {
-      y: {
-        beginAtZero: true,
-        grid: {
-          color: "rgba(0, 0, 0, 0.05)",
-        },
+    ...(secondaryDataKey && {
+      [secondaryDataKey]: {
+        label: secondaryDataKey.charAt(0).toUpperCase() + secondaryDataKey.slice(1),
+        color: chartColors[1],
       },
-      x: {
-        grid: {
-          display: false,
-        },
-      },
-    },
-    animation: {
-      duration: 1000,
-    },
+    }),
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      style={{ height }}
-    >
-      <Line ref={chartRef} options={options} data={data} />
-    </motion.div>
+    <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <RechartsLineChart accessibilityLayer data={data}>
+          <CartesianGrid vertical={false} />
+          <XAxis
+            dataKey={categoryKey}
+            tickLine={false}
+            tickMargin={10}
+            axisLine={false}
+            tickFormatter={(value) => value.slice(0, 3)}
+          />
+          <YAxis />
+          <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+          <Line dataKey={dataKey} type="monotone" stroke="var(--color-count)" strokeWidth={2} dot={false} />
+          {secondaryDataKey && (
+            <Line
+              dataKey={secondaryDataKey}
+              type="monotone"
+              stroke="var(--color-downloaded)"
+              strokeWidth={2}
+              dot={false}
+            />
+          )}
+        </RechartsLineChart>
+      </ResponsiveContainer>
+    </ChartContainer>
   )
 }

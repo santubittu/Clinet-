@@ -2,277 +2,230 @@
 
 import type React from "react"
 
-import { useState } from "react"
-import Link from "next/link"
+import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useToast } from "@/hooks/use-toast"
-import { motion } from "framer-motion"
-import { Eye, EyeOff, Lock, Mail } from "lucide-react"
+import { Shield, Eye, EyeOff, AlertCircle } from "lucide-react"
+import { authenticateClient, authenticateAdmin } from "@/lib/actions"
 
 export default function LoginPage() {
+  const [clientData, setClientData] = useState({ identifier: "", password: "" })
+  const [adminData, setAdminData] = useState({ email: "", password: "" })
+  const [showClientPassword, setShowClientPassword] = useState(false)
+  const [showAdminPassword, setShowAdminPassword] = useState(false)
+  const [error, setError] = useState("")
+  const [isPending, startTransition] = useTransition()
   const router = useRouter()
-  const { toast } = useToast()
-  const [isLoading, setIsLoading] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
-
-  // Client login state
-  const [clientCredentials, setClientCredentials] = useState({
-    clientId: "",
-    password: "",
-  })
-
-  // Admin login state
-  const [adminCredentials, setAdminCredentials] = useState({
-    email: "admin@santusahahero.com",
-    password: "admin123",
-  })
 
   const handleClientLogin = (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
+    setError("")
 
-    // Validate inputs
-    if (!clientCredentials.clientId || !clientCredentials.password) {
-      toast({
-        title: "Missing information",
-        description: "Please enter your client ID and password",
-        variant: "destructive",
-      })
-      setIsLoading(false)
+    if (!clientData.identifier || !clientData.password) {
+      setError("Please fill in all fields")
       return
     }
 
-    // Simulate login process
-    setTimeout(() => {
-      // For demo purposes, accept CLIENT123 with any password
-      if (clientCredentials.clientId === "CLIENT123") {
-        toast({
-          title: "Login successful",
-          description: "Welcome to your secure client portal",
-        })
+    startTransition(async () => {
+      const result = await authenticateClient(clientData.identifier, clientData.password)
+
+      if (result.success) {
         router.push("/client/dashboard")
+        router.refresh()
       } else {
-        toast({
-          title: "Login failed",
-          description: "Invalid client ID or password. For demo, use CLIENT123.",
-          variant: "destructive",
-        })
-        setIsLoading(false)
+        setError(result.error || "Login failed")
       }
-    }, 1500)
+    })
   }
 
   const handleAdminLogin = (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
+    setError("")
 
-    // Validate inputs
-    if (!adminCredentials.email || !adminCredentials.password) {
-      toast({
-        title: "Missing information",
-        description: "Please enter your email and password",
-        variant: "destructive",
-      })
-      setIsLoading(false)
+    if (!adminData.email || !adminData.password) {
+      setError("Please fill in all fields")
       return
     }
 
-    // Simulate login process
-    setTimeout(() => {
-      // For demo purposes, accept admin@santusahahero.com with password admin123
-      if (adminCredentials.email === "admin@santusahahero.com" && adminCredentials.password === "admin123") {
-        toast({
-          title: "Admin login successful",
-          description: "Welcome to the admin portal",
-        })
+    startTransition(async () => {
+      const result = await authenticateAdmin(adminData.email, adminData.password)
+
+      if (result.success) {
         router.push("/admin/dashboard")
+        router.refresh()
       } else {
-        toast({
-          title: "Login failed",
-          description: "Invalid email or password. For demo, use admin@santusahahero.com and admin123.",
-          variant: "destructive",
-        })
-        setIsLoading(false)
+        setError(result.error || "Login failed")
       }
-    }, 1500)
+    })
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-50 to-gray-100 p-4">
-      <div className="max-w-md w-full">
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="text-center mb-8"
-        >
-          <Link href="/" className="inline-block">
-            <h1 className="text-2xl font-bold text-gray-900">Santu Saha Hero</h1>
-            <p className="text-sm text-gray-500">Secure Client Portal</p>
-          </Link>
-        </motion.div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center space-x-2 mb-4">
+            <Shield className="h-8 w-8 text-blue-600" />
+            <span className="text-2xl font-bold text-gray-900">Santu Saha Hero</span>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900">Welcome Back</h1>
+          <p className="text-gray-600 mt-2">Sign in to your secure portal</p>
+        </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-        >
-          <Tabs defaultValue="client" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-4">
-              <TabsTrigger value="client">Client Login</TabsTrigger>
-              <TabsTrigger value="admin">Staff Login</TabsTrigger>
-            </TabsList>
+        <Card className="shadow-xl border-0">
+          <CardHeader className="space-y-1 pb-4">
+            <CardTitle className="text-xl text-center">Sign In</CardTitle>
+            <CardDescription className="text-center">Choose your account type to continue</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Tabs defaultValue="client" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-6">
+                <TabsTrigger value="client">Client Portal</TabsTrigger>
+                <TabsTrigger value="admin">Admin Portal</TabsTrigger>
+              </TabsList>
 
-            <TabsContent value="client">
-              <Card className="shadow-lg">
-                <CardHeader>
-                  <CardTitle>Client Login</CardTitle>
-                  <CardDescription>Access your financial documents securely</CardDescription>
-                </CardHeader>
-                <form onSubmit={handleClientLogin}>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="client-id">Client ID or Email</Label>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                        <Input
-                          id="client-id"
-                          type="text"
-                          placeholder="Enter your client ID or email"
-                          className="pl-10"
-                          value={clientCredentials.clientId}
-                          onChange={(e) => setClientCredentials({ ...clientCredentials, clientId: e.target.value })}
-                          required
-                        />
-                      </div>
-                      <p className="text-xs text-gray-500">For demo, use: CLIENT123</p>
+              {error && (
+                <Alert variant="destructive" className="mb-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
+              <TabsContent value="client">
+                <form onSubmit={handleClientLogin} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="client-identifier">Client ID or Username</Label>
+                    <Input
+                      id="client-identifier"
+                      type="text"
+                      placeholder="Enter your Client ID or Username"
+                      value={clientData.identifier}
+                      onChange={(e) => setClientData({ ...clientData, identifier: e.target.value })}
+                      disabled={isPending}
+                      className="h-11"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="client-password">Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="client-password"
+                        type={showClientPassword ? "text" : "password"}
+                        placeholder="Enter your password"
+                        value={clientData.password}
+                        onChange={(e) => setClientData({ ...clientData, password: e.target.value })}
+                        disabled={isPending}
+                        className="h-11 pr-10"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowClientPassword(!showClientPassword)}
+                        disabled={isPending}
+                      >
+                        {showClientPassword ? (
+                          <EyeOff className="h-4 w-4 text-gray-400" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-gray-400" />
+                        )}
+                      </Button>
                     </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="client-password">Password</Label>
-                        <Link href="/forgot-password" className="text-xs text-gray-500 hover:text-gray-900">
-                          Forgot password?
-                        </Link>
-                      </div>
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                        <Input
-                          id="client-password"
-                          type={showPassword ? "text" : "password"}
-                          placeholder="Enter your password"
-                          className="pl-10 pr-10"
-                          value={clientCredentials.password}
-                          onChange={(e) => setClientCredentials({ ...clientCredentials, password: e.target.value })}
-                          required
-                        />
-                        <button
-                          type="button"
-                          className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
-                          onClick={() => setShowPassword(!showPassword)}
-                        >
-                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                      </div>
-                      <p className="text-xs text-gray-500">For demo, any password will work</p>
-                    </div>
-                  </CardContent>
-                  <CardFooter className="flex flex-col space-y-4">
-                    <Button type="submit" className="w-full" disabled={isLoading}>
-                      {isLoading ? (
-                        <>
-                          <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-b-transparent"></div>
-                          Logging in...
-                        </>
-                      ) : (
-                        "Login"
-                      )}
-                    </Button>
-                    <p className="text-sm text-center text-gray-500">
-                      Don&apos;t have an account?{" "}
-                      <Link href="/register" className="text-gray-900 hover:underline">
-                        Register with your Client ID
-                      </Link>
-                    </p>
-                  </CardFooter>
+                  </div>
+                  <Button type="submit" className="w-full h-11" disabled={isPending}>
+                    {isPending ? "Signing in..." : "Sign In to Client Portal"}
+                  </Button>
                 </form>
-              </Card>
-            </TabsContent>
+              </TabsContent>
 
-            <TabsContent value="admin">
-              <Card className="shadow-lg">
-                <CardHeader>
-                  <CardTitle>Staff Login</CardTitle>
-                  <CardDescription>Access the firm&apos;s admin portal</CardDescription>
-                </CardHeader>
-                <form onSubmit={handleAdminLogin}>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="admin-email">Email</Label>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                        <Input
-                          id="admin-email"
-                          type="email"
-                          placeholder="Enter your email"
-                          className="pl-10"
-                          value={adminCredentials.email}
-                          onChange={(e) => setAdminCredentials({ ...adminCredentials, email: e.target.value })}
-                          required
-                        />
-                      </div>
-                      <p className="text-xs text-gray-500">For demo, use: admin@santusahahero.com</p>
+              <TabsContent value="admin">
+                <form onSubmit={handleAdminLogin} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="admin-email">Email</Label>
+                    <Input
+                      id="admin-email"
+                      type="email"
+                      placeholder="Enter your email"
+                      value={adminData.email}
+                      onChange={(e) => setAdminData({ ...adminData, email: e.target.value })}
+                      disabled={isPending}
+                      className="h-11"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="admin-password">Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="admin-password"
+                        type={showAdminPassword ? "text" : "password"}
+                        placeholder="Enter your password"
+                        value={adminData.password}
+                        onChange={(e) => setAdminData({ ...adminData, password: e.target.value })}
+                        disabled={isPending}
+                        className="h-11 pr-10"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowAdminPassword(!showAdminPassword)}
+                        disabled={isPending}
+                      >
+                        {showAdminPassword ? (
+                          <EyeOff className="h-4 w-4 text-gray-400" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-gray-400" />
+                        )}
+                      </Button>
                     </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="admin-password">Password</Label>
-                        <Link href="/forgot-password" className="text-xs text-gray-500 hover:text-gray-900">
-                          Forgot password?
-                        </Link>
-                      </div>
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                        <Input
-                          id="admin-password"
-                          type={showPassword ? "text" : "password"}
-                          placeholder="Enter your password"
-                          className="pl-10 pr-10"
-                          value={adminCredentials.password}
-                          onChange={(e) => setAdminCredentials({ ...adminCredentials, password: e.target.value })}
-                          required
-                        />
-                        <button
-                          type="button"
-                          className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
-                          onClick={() => setShowPassword(!showPassword)}
-                        >
-                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                      </div>
-                      <p className="text-xs text-gray-500">For demo, use: admin123</p>
-                    </div>
-                  </CardContent>
-                  <CardFooter>
-                    <Button type="submit" className="w-full" disabled={isLoading}>
-                      {isLoading ? (
-                        <>
-                          <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-b-transparent"></div>
-                          Logging in...
-                        </>
-                      ) : (
-                        "Login"
-                      )}
-                    </Button>
-                  </CardFooter>
+                  </div>
+                  <Button type="submit" className="w-full h-11" disabled={isPending}>
+                    {isPending ? "Signing in..." : "Sign In to Admin Portal"}
+                  </Button>
                 </form>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </motion.div>
+              </TabsContent>
+            </Tabs>
+
+            <div className="mt-6 text-center space-y-2">
+              <p className="text-sm text-gray-600">
+                Don't have an account?{" "}
+                <Link href="/register" className="text-blue-600 hover:underline font-medium">
+                  Register here
+                </Link>
+              </p>
+              <p className="text-xs text-gray-500">
+                <Link href="#" className="hover:underline">
+                  Forgot your password?
+                </Link>
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Demo Credentials */}
+        <Card className="mt-6 bg-blue-50 border-blue-200">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm text-blue-800">Demo Credentials</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="text-xs text-blue-700 space-y-2">
+              <div>
+                <strong>Client:</strong> acme_corp / password123
+              </div>
+              <div>
+                <strong>Admin:</strong> admin@santusahahero.com / admin123
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

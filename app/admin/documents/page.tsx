@@ -1,160 +1,325 @@
 "use client"
 
-import { useState } from "react"
+import type React from "react"
+
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { DownloadCloud, Eye, FileText, Search, Share2, Trash2 } from "lucide-react"
-
-// Sample document data
-const initialDocuments = [
-  {
-    id: "DOC001",
-    name: "Balance Sheet Q1 2024.pdf",
-    type: "Balance Sheet",
-    client: "ABC Corporation",
-    clientId: "CLIENT123",
-    uploadDate: "Apr 10, 2024",
-    size: "1.2 MB",
-  },
-  {
-    id: "DOC002",
-    name: "Tax Return 2023.pdf",
-    type: "Tax Return",
-    client: "XYZ Enterprises",
-    clientId: "CLIENT456",
-    uploadDate: "Apr 8, 2024",
-    size: "3.5 MB",
-  },
-  {
-    id: "DOC003",
-    name: "GST Return Q4 2023.pdf",
-    type: "GST Return",
-    client: "LMN Limited",
-    clientId: "CLIENT789",
-    uploadDate: "Apr 5, 2024",
-    size: "0.8 MB",
-  },
-  {
-    id: "DOC004",
-    name: "Profit & Loss Statement Q1 2024.pdf",
-    type: "P&L Statement",
-    client: "ABC Corporation",
-    clientId: "CLIENT123",
-    uploadDate: "Apr 10, 2024",
-    size: "1.5 MB",
-  },
-  {
-    id: "DOC005",
-    name: "Annual Financial Report 2023.pdf",
-    type: "Financial Report",
-    client: "PQR Inc",
-    clientId: "CLIENT321",
-    uploadDate: "Mar 28, 2024",
-    size: "4.2 MB",
-  },
-  {
-    id: "DOC006",
-    name: "GST Return Q1 2024.pdf",
-    type: "GST Return",
-    client: "EFG Solutions",
-    clientId: "CLIENT654",
-    uploadDate: "Apr 2, 2024",
-    size: "0.9 MB",
-  },
-  {
-    id: "DOC007",
-    name: "Tax Planning Document 2024.pdf",
-    type: "Tax Planning",
-    client: "UVW Group",
-    clientId: "CLIENT987",
-    uploadDate: "Mar 15, 2024",
-    size: "2.3 MB",
-  },
-  {
-    id: "DOC008",
-    name: "Quarterly Financial Review Q1 2024.pdf",
-    type: "Financial Review",
-    client: "RST Ventures",
-    clientId: "CLIENT135",
-    uploadDate: "Apr 9, 2024",
-    size: "1.8 MB",
-  },
-]
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Search, Share2, Trash2, Download, LinkIcon, Loader2 } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
+import {
+  getDocuments,
+  deleteDocument,
+  shareDocuments,
+  generateDocumentShareLink,
+  downloadDocument,
+} from "@/lib/actions"
+import { getClients } from "@/lib/actions" // Import getClients to select recipients
 
 export default function DocumentsPage() {
-  const [documents, setDocuments] = useState(initialDocuments)
+  const { toast } = useToast()
+  const [documents, setDocuments] = useState<Document[]>([])
+  const [clients, setClients] = useState<Client[]>([])
   const [searchQuery, setSearchQuery] = useState("")
-  const [filterType, setFilterType] = useState("all")
-  const [filterClient, setFilterClient] = useState("all")
+  const [isLoading, setIsLoading] = useState(true)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false)
+  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null)
+  const [selectedDocumentsToShare, setSelectedDocumentsToShare] = useState<string[]>([])
+  const [selectedClientsToShare, setSelectedClientsToShare] = useState<string[]>([])
+  const [generatedShareLink, setGeneratedShareLink] = useState<string | null>(null)
 
-  // Get unique document types and clients for filters
-  const documentTypes = ["all", ...new Set(documents.map((doc) => doc.type))]
-  const clients = ["all", ...new Set(documents.map((doc) => doc.client))]
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const docs = await getDocuments()
+        setDocuments(docs)
+        const clientList = await getClients()
+        setClients(clientList)
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to load data.",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    }
 
-  const filteredDocuments = documents.filter((doc) => {
-    const matchesSearch =
+    loadData()
+  }, [toast])
+
+  const filteredDocuments = documents.filter(
+    (doc) =>
       doc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       doc.client.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doc.type.toLowerCase().includes(searchQuery.toLowerCase())
+      doc.type.toLowerCase().includes(searchQuery.toLowerCase()),
+  )
 
-    const matchesType = filterType === "all" || doc.type === filterType
-    const matchesClient = filterClient === "all" || doc.client === filterClient
+  const handleDeleteDocument = async () => {
+    if (!selectedDocument) return
 
-    return matchesSearch && matchesType && matchesClient
-  })
+    setIsLoading(true)
 
-  const handleDeleteDocument = (id: string) => {
-    setDocuments(documents.filter((doc) => doc.id !== id))
+    try {
+      const result = await deleteDocument(selectedDocument.id)
+
+      if (result.error) {
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        })
+        return
+      }
+
+      setDocuments(documents.filter((doc) => doc.id !== selectedDocument.id))
+      setIsDeleteDialogOpen(false)
+
+      toast({
+        title: "Success",
+        description: "Document deleted successfully.",
+      })
+    } catch (error) {
+      console.error("Error deleting document:", error)
+      toast({
+        title: "Error",
+        description: "Failed to delete document. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleShareDocuments = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+
+    try {
+      const formData = new FormData()
+      selectedDocumentsToShare.forEach((docId) => formData.append("documentIds", docId))
+      selectedClientsToShare.forEach((clientId) => formData.append("clientIds", clientId))
+
+      const result = await shareDocuments(formData)
+
+      if (result.error) {
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        })
+        return
+      }
+
+      toast({
+        title: "Success",
+        description: `Successfully shared ${result.documents.length} documents.`,
+      })
+      setIsShareDialogOpen(false)
+      setSelectedDocumentsToShare([])
+      setSelectedClientsToShare([])
+      // Re-load documents to reflect changes
+      const updatedDocs = await getDocuments()
+      setDocuments(updatedDocs)
+    } catch (error) {
+      console.error("Error sharing documents:", error)
+      toast({
+        title: "Error",
+        description: "Failed to share documents. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleGenerateShareLink = async (docId: string) => {
+    setIsLoading(true)
+    try {
+      const result = await generateDocumentShareLink(docId)
+      if (result.success) {
+        setGeneratedShareLink(result.shareLink)
+        toast({
+          title: "Share Link Generated",
+          description: "The public share link has been created.",
+        })
+        // Update the document in the local state
+        setDocuments((prevDocs) =>
+          prevDocs.map((doc) => (doc.id === docId ? { ...doc, shareLink: result.shareLink } : doc)),
+        )
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to generate share link.",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error generating share link:", error)
+      toast({
+        title: "Error",
+        description: "Failed to generate share link. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleDownloadDocument = async (docId: string) => {
+    setIsLoading(true)
+    try {
+      const result = await downloadDocument(docId)
+      if (result.success && result.fileUrl) {
+        window.open(result.fileUrl, "_blank")
+        toast({
+          title: "Download Started",
+          description: "Your download should begin shortly.",
+        })
+        // Update the document in the local state to reflect download count
+        setDocuments((prevDocs) =>
+          prevDocs.map((doc) => (doc.id === docId ? { ...doc, downloaded: result.downloadCount } : doc)),
+        )
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to download document.",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error downloading document:", error)
+      toast({
+        title: "Error",
+        description: "Failed to download document. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight">Documents</h1>
-        <Button>
-          <FileText className="mr-2 h-4 w-4" />
-          Upload New Document
-        </Button>
+        <div className="flex gap-2">
+          <Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => setSelectedDocumentsToShare([])}>
+                <Share2 className="mr-2 h-4 w-4" />
+                Share Documents
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[600px]">
+              <DialogHeader>
+                <DialogTitle>Share Documents</DialogTitle>
+                <DialogDescription>Select documents and clients to share with.</DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleShareDocuments}>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="documents-to-share">Select Documents</Label>
+                    <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto border p-2 rounded-md">
+                      {documents.length > 0 ? (
+                        documents.map((doc) => (
+                          <div key={doc.id} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`doc-${doc.id}`}
+                              checked={selectedDocumentsToShare.includes(doc.id)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setSelectedDocumentsToShare([...selectedDocumentsToShare, doc.id])
+                                } else {
+                                  setSelectedDocumentsToShare(selectedDocumentsToShare.filter((id) => id !== doc.id))
+                                }
+                              }}
+                            />
+                            <Label htmlFor={`doc-${doc.id}`} className="text-sm font-medium leading-none">
+                              {doc.name} ({doc.client})
+                            </Label>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-gray-500 col-span-2">No documents available to share.</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="clients-to-share">Select Clients</Label>
+                    <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto border p-2 rounded-md">
+                      {clients.length > 0 ? (
+                        clients.map((client) => (
+                          <div key={client.id} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`client-${client.id}`}
+                              checked={selectedClientsToShare.includes(client.id)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setSelectedClientsToShare([...selectedClientsToShare, client.id])
+                                } else {
+                                  setSelectedClientsToShare(selectedClientsToShare.filter((id) => id !== client.id))
+                                }
+                              }}
+                            />
+                            <Label htmlFor={`client-${client.id}`} className="text-sm font-medium leading-none">
+                              {client.name} ({client.id})
+                            </Label>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-gray-500 col-span-2">No clients available.</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsShareDialogOpen(false)} type="button">
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={isLoading || selectedDocumentsToShare.length === 0 || selectedClientsToShare.length === 0}
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Sharing...
+                      </>
+                    ) : (
+                      "Share Selected"
+                    )}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-4">
+      <div className="flex items-center space-x-2">
         <div className="relative flex-1">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
           <Input
-            placeholder="Search documents..."
+            placeholder="Search documents by name, client, or type..."
             className="pl-8"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-        </div>
-        <div className="flex gap-2">
-          <Select value={filterType} onValueChange={setFilterType}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Filter by type" />
-            </SelectTrigger>
-            <SelectContent>
-              {documentTypes.map((type) => (
-                <SelectItem key={type} value={type}>
-                  {type === "all" ? "All Types" : type}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={filterClient} onValueChange={setFilterClient}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Filter by client" />
-            </SelectTrigger>
-            <SelectContent>
-              {clients.map((client) => (
-                <SelectItem key={client} value={client}>
-                  {client === "all" ? "All Clients" : client}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
       </div>
 
@@ -167,11 +332,20 @@ export default function DocumentsPage() {
               <TableHead>Client</TableHead>
               <TableHead>Upload Date</TableHead>
               <TableHead>Size</TableHead>
+              <TableHead>Views</TableHead>
+              <TableHead>Downloads</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredDocuments.length > 0 ? (
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                  <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                  Loading documents...
+                </TableCell>
+              </TableRow>
+            ) : filteredDocuments.length > 0 ? (
               filteredDocuments.map((doc) => (
                 <TableRow key={doc.id}>
                   <TableCell className="font-medium">{doc.name}</TableCell>
@@ -179,18 +353,29 @@ export default function DocumentsPage() {
                   <TableCell>{doc.client}</TableCell>
                   <TableCell>{doc.uploadDate}</TableCell>
                   <TableCell>{doc.size}</TableCell>
+                  <TableCell>{doc.viewed ? "Yes" : "No"}</TableCell>
+                  <TableCell>{doc.downloaded}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      <Button variant="ghost" size="icon">
-                        <Eye className="h-4 w-4" />
+                      <Button variant="ghost" size="icon" onClick={() => handleDownloadDocument(doc.id)}>
+                        <Download className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon">
-                        <DownloadCloud className="h-4 w-4" />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleGenerateShareLink(doc.id)}
+                        disabled={!!doc.shareLink}
+                      >
+                        <LinkIcon className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon">
-                        <Share2 className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDeleteDocument(doc.id)}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setSelectedDocument(doc)
+                          setIsDeleteDialogOpen(true)
+                        }}
+                      >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -199,14 +384,68 @@ export default function DocumentsPage() {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                  No documents found matching your criteria
+                <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                  No documents found matching your search.
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
       </div>
+
+      {/* Delete Document Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Document</DialogTitle>
+            <DialogDescription>Are you sure you want to delete {selectedDocument?.name}?</DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-gray-500">
+              This action cannot be undone. This will permanently delete the document and its associated data.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteDocument} disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete Document"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Generated Share Link Dialog */}
+      {generatedShareLink && (
+        <Dialog open={true} onOpenChange={() => setGeneratedShareLink(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Document Share Link</DialogTitle>
+              <DialogDescription>Copy this link to share the document publicly.</DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <Input value={generatedShareLink} readOnly className="font-mono" />
+              <p className="text-sm text-gray-500 mt-2">
+                Anyone with this link can view and download the document without logging in.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button onClick={() => navigator.clipboard.writeText(generatedShareLink || "")}>Copy Link</Button>
+              <Button variant="outline" onClick={() => setGeneratedShareLink(null)}>
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   )
 }

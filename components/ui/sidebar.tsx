@@ -3,7 +3,12 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { VariantProps, cva } from "class-variance-authority"
-import { PanelLeft } from "lucide-react"
+import { PanelLeft } from 'lucide-react'
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { Package2 } from 'lucide-react'
+import { FileText, LayoutDashboard, Users, Settings, LogOut, Upload, Activity } from 'lucide-react'
+import { LogoutButton } from "./logout-button"
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -734,6 +739,88 @@ const SidebarMenuSubButton = React.forwardRef<
   )
 })
 SidebarMenuSubButton.displayName = "SidebarMenuSubButton"
+
+export function AdminSidebar() {
+  const pathname = usePathname()
+
+  const navItems = [
+    {
+      name: "Dashboard",
+      href: "/admin/dashboard",
+      icon: LayoutDashboard,
+    },
+    {
+      name: "Clients",
+      href: "/admin/clients",
+      icon: Users,
+    },
+    {
+      name: "Documents",
+      href: "/admin/documents",
+      icon: FileText,
+    },
+    {
+      name: "Upload",
+      href: "/admin/upload",
+      icon: Upload,
+    },
+    {
+      name: "Admin Users",
+      href: "/admin/users",
+      icon: Users,
+    },
+    {
+      name: "Activity Log",
+      href: "/admin/activity",
+      icon: Activity,
+    },
+    {
+      name: "Reports",
+      href: "/admin/reports",
+      icon: FileText, // Placeholder icon
+    },
+    {
+      name: "Settings",
+      href: "/admin/settings",
+      icon: Settings,
+    },
+  ]
+
+  return (
+    <div className="hidden border-r bg-gray-100/40 lg:block dark:bg-gray-800/40">
+      <div className="flex h-full max-h-screen flex-col gap-2">
+        <div className="flex h-[60px] items-center border-b px-6">
+          <Link className="flex items-center gap-2 font-semibold" href="/admin/dashboard">
+            <Package2 className="h-6 w-6" />
+            <span className="">Admin Portal</span>
+          </Link>
+        </div>
+        <div className="flex-1 overflow-auto py-2">
+          <nav className="grid items-start px-4 text-sm font-medium">
+            {navItems.map((item) => (
+              <Link
+                key={item.name}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
+                  {
+                    "bg-gray-200 text-gray-900 dark:bg-gray-800 dark:text-gray-50": pathname === item.href,
+                  },
+                )}
+                href={item.href}
+              >
+                <item.icon className="h-4 w-4" />
+                {item.name}
+              </Link>
+            ))}
+          </nav>
+        </div>
+        <div className="mt-auto p-4 border-t">
+          <LogoutButton />
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export {
   Sidebar,

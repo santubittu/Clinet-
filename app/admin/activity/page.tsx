@@ -1,14 +1,15 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { getActivities } from "@/lib/actions"
 import { useToast } from "@/hooks/use-toast"
 import { motion } from "framer-motion"
-import { Search, Filter, Activity, User, UserPlus, FileText, Download, Eye } from "lucide-react"
+import { Search, Filter, Activity, User, UserPlus, FileText, Download, Eye } from 'lucide-react'
 import type { Activity as ActivityType } from "@/lib/types"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
 export default function ActivityLogPage() {
   const { toast } = useToast()
@@ -64,7 +65,7 @@ export default function ActivityLogPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="grid gap-6 p-6 md:p-8">
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -130,36 +131,30 @@ export default function ActivityLogPage() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
             </div>
           ) : filteredActivities.length > 0 ? (
-            <div className="space-y-4">
-              {filteredActivities.map((activity, index) => (
-                <motion.div
-                  key={activity.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: index * 0.05 }}
-                  className="flex items-start space-x-4 p-4 border rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  <div className="mt-1">{getActivityIcon(activity.action)}</div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-col sm:flex-row sm:justify-between">
-                      <p className="font-medium">{activity.action}</p>
-                      <p className="text-sm text-gray-500 sm:text-right">{activity.timestamp}</p>
-                    </div>
-                    {activity.details && <p className="text-sm text-gray-600 mt-1">{activity.details}</p>}
-                    <div className="flex flex-wrap gap-x-4 text-sm mt-2">
-                      <span className="text-gray-500">
-                        <User className="inline h-3.5 w-3.5 mr-1" />
-                        {activity.user}
-                      </span>
-                      {activity.ip && <span className="text-gray-500">IP: {activity.ip}</span>}
-                      <span className={`${activity.userType === "admin" ? "text-blue-600" : "text-green-600"}`}>
-                        {activity.userType === "admin" ? "Staff" : "Client"}
-                      </span>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Timestamp</TableHead>
+                  <TableHead>User</TableHead>
+                  <TableHead>User Type</TableHead>
+                  <TableHead>Action</TableHead>
+                  <TableHead>Details</TableHead>
+                  <TableHead>IP Address</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredActivities.map((activity) => (
+                  <TableRow key={activity.id}>
+                    <TableCell>{activity.timestamp}</TableCell>
+                    <TableCell>{activity.user}</TableCell>
+                    <TableCell>{activity.userType}</TableCell>
+                    <TableCell>{activity.action}</TableCell>
+                    <TableCell>{activity.details}</TableCell>
+                    <TableCell>{activity.ip}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           ) : (
             <div className="text-center py-8 text-gray-500">
               <Activity className="h-12 w-12 mx-auto text-gray-300 mb-2" />

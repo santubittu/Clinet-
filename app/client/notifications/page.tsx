@@ -2,166 +2,154 @@
 
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { getNotifications, markNotificationAsRead, deleteNotification } from "@/lib/actions"
+import { CheckCircle, Trash2, Loader2 } from 'lucide-react'
 import { useToast } from "@/hooks/use-toast"
-import { motion, AnimatePresence } from "framer-motion"
-import { Bell, Check, Trash2, Info, AlertTriangle, AlertCircle, CheckCircle } from "lucide-react"
-import type { Notification } from "@/lib/types"
+import { getNotifications, markNotificationAsRead, deleteNotification, getCurrentUser } from "@/lib/actions"
+import { Notification } from "@/lib/types"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { redirect } from "next/navigation"
 
-export default function NotificationsPage() {
-  const { toast } = useToast()
+export default function ClientNotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [loading, setLoading] = useState(true)
+  const { toast } = useToast()
+  const [user, setUser] = useState<any>(null)
 
   useEffect(() => {
-    const loadNotifications = async () => {
-      try {
-        // For demo purposes, we're using CLIENT123
-        const data = await getNotifications("CLIENT123", "client")
-        setNotifications(data)
-      } catch (error) {
-        console.error("Failed to load notifications", error)
-        toast({
-          title: "Error",
-          description: "Failed to load notifications",
-          variant: "destructive",
-        })
-      } finally {
-        setIsLoading(false)
+    const fetchUserAndNotifications = async () => {
+      const currentUser = await getCurrentUser()
+      if (!currentUser || currentUser.type !== "client") {
+        redirect("/login")
+        return
       }
+      setUser(currentUser)
+      setLoading(true)
+      const fetchedNotifications = await getNotifications(currentUser.id, "client")
+      setNotifications(fetchedNotifications)
+      setLoading(false)
     }
-
-    loadNotifications()
-  }, [toast])
+    fetchUserAndNotifications()
+  }, [])
 
   const handleMarkAsRead = async (id: string) => {
-    try {
-      await markNotificationAsRead(id)
-      setNotifications(notifications.map((n) => (n.id === id ? { ...n, read: true } : n)))
-      toast({
-        title: "Success",
-        description: "Notification marked as read",
-      })
-    } catch (error) {
-      console.error("Failed to mark notification as read", error)
-      toast({
-        title: "Error",
-        description: "Failed to mark notification as read",
-        variant: "destructive",
-      })
+    const result = await markNotificationAsRead(id)
+    if (result.success) {
+      toast({ title: "Notification marked as read." })
+      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)))
+    } else {
+      toast({ title: "Failed to mark as read", description: result.error, variant: "destructive" })
     }
   }
 
   const handleDelete = async (id: string) => {
-    try {
-      await deleteNotification(id)
-      setNotifications(notifications.filter((n) => n.id !== id))
-      toast({
-        title: "Success",
-        description: "Notification deleted",
-      })
-    } catch (error) {
-      console.error("Failed to delete notification", error)
-      toast({
-        title: "Error",
-        description: "Failed to delete notification",
-        variant: "destructive",
-      })
+    const result = await deleteNotification(id)
+    if (result.success) {
+      toast({ title: "Notification deleted." })
+      setNotifications((prev) => prev.filter((n) => n.id !== id))
+    } else {
+      toast({ title: "Failed to delete notification", description: result.error, variant: "destructive" })
     }
   }
 
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case "info":
-        return <Info className="h-5 w-5 text-blue-500" />
-      case "warning":
-        return <AlertTriangle className="h-5 w-5 text-amber-500" />
-      case "error":
-        return <AlertCircle className="h-5 w-5 text-red-500" />
-      case "success":
-        return <CheckCircle className="h-5 w-5 text-green-500" />
-      default:
-        return <Bell className="h-5 w-5 text-gray-500" />
-    }
+  if (loading) {
+    return (
+      <div className="grid gap-6 p-6 md:p-8">
+        <h1 className="text-3xl font-bold">My Notifications</h1>
+        <Card>
+          <CardHeader>
+            <CardTitle>Your Notifications</CardTitle>
+            <CardDescription>Important updates and alerts from your accountant.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-center h-48">
+              <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="flex items-center justify-between"
-      >
-        <h1 className="text-3xl font-bold tracking-tight">Notifications</h1>
-      </motion.div>
+    <div className="grid gap-6 p-6 md:p-8">
+      <h1 className="text-3xl font-bold">My Notifications</h1>
 
       <Card>
         <CardHeader>
           <CardTitle>Your Notifications</CardTitle>
-          <CardDescription>Stay updated with important information about your account and documents</CardDescription>
+          <CardDescription>Important updates and alerts from your accountant.</CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-            </div>
-          ) : notifications.length > 0 ? (
-            <AnimatePresence>
-              <div className="space-y-4">
-                {notifications.map((notification, index) => (
-                  <motion.div
-                    key={notification.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.3, delay: index * 0.05 }}
-                    className={`flex items-start space-x-4 p-4 border rounded-lg ${!notification.read ? "bg-blue-50 border-blue-100" : "hover:bg-gray-50"} transition-colors`}
-                  >
-                    <div className="mt-1">{getNotificationIcon(notification.type)}</div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex flex-col sm:flex-row sm:justify-between">
-                        <p className={`font-medium ${!notification.read ? "text-blue-800" : ""}`}>
-                          {notification.title}
-                        </p>
-                        <p className="text-sm text-gray-500 sm:text-right">{notification.createdAt}</p>
-                      </div>
-                      <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
-                      <div className="flex justify-end mt-3 space-x-2">
-                        {!notification.read && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleMarkAsRead(notification.id)}
-                            className="flex items-center"
-                          >
-                            <Check className="h-3.5 w-3.5 mr-1" />
-                            Mark as Read
-                          </Button>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(notification.id)}
-                          className="flex items-center text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-3.5 w-3.5 mr-1" />
-                          Delete
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Title</TableHead>
+                <TableHead>Message</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {notifications.map((notification) => (
+                <TableRow key={notification.id} className={notification.read ? "text-gray-500" : "font-medium"}>
+                  <TableCell>{notification.createdAt}</TableCell>
+                  <TableCell>{notification.title}</TableCell>
+                  <TableCell>{notification.message}</TableCell>
+                  <TableCell>{notification.read ? "Read" : "Unread"}</TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      {!notification.read && (
+                        <Button variant="outline" size="icon" onClick={() => handleMarkAsRead(notification.id)}>
+                          <CheckCircle className="h-4 w-4" />
+                          <span className="sr-only">Mark as Read</span>
                         </Button>
-                      </div>
+                      )}
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="destructive" size="icon">
+                            <Trash2 className="h-4 w-4" />
+                            <span className="sr-only">Delete Notification</span>
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This action cannot be undone. This will permanently delete this notification.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDelete(notification.id)}>Delete</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
-                  </motion.div>
-                ))}
-              </div>
-            </AnimatePresence>
-          ) : (
-            <div className="text-center py-12">
-              <Bell className="h-12 w-12 mx-auto text-gray-300 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900">No notifications</h3>
-              <p className="mt-1 text-gray-500">You're all caught up! Check back later for updates.</p>
-            </div>
-          )}
+                  </TableCell>
+                </TableRow>
+              ))}
+              {notifications.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center text-gray-500">
+                    No notifications found.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
     </div>

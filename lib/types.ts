@@ -1,20 +1,8 @@
-export type Role = "admin" | "manager" | "uploader"
-export type ClientStatus = "active" | "inactive" | "pending"
-export type DocumentType =
-  | "Balance Sheet"
-  | "Tax Return"
-  | "GST Return"
-  | "P&L Statement"
-  | "Financial Report"
-  | "Tax Planning"
-  | "Financial Review"
-  | "Other"
-
 export interface AdminUser {
   id: string
   name: string
   email: string
-  role: Role
+  role: "admin" | "manager" | "uploader"
   createdAt: string
   lastLogin?: string
 }
@@ -26,22 +14,35 @@ export interface Client {
   phone?: string
   address?: string
   contactPerson?: string
-  status: ClientStatus
+  status: "active" | "inactive" | "pending"
   documents: number
   lastActive?: string
   createdAt: string
+  isRegistered: boolean
+  username?: string
 }
 
 export interface Document {
   id: string
   name: string
-  type: DocumentType
+  type:
+    | "Balance Sheet"
+    | "Tax Return"
+    | "GST Return"
+    | "P&L Statement"
+    | "Financial Report"
+    | "Tax Planning"
+    | "Financial Review"
+    | "Other"
   client: string
   clientId: string
   uploadDate: string
   size: string
-  viewed?: boolean
-  downloaded?: number
+  viewed: boolean
+  downloaded: number
+  shareLink?: string
+  description?: string
+  file_url?: string
 }
 
 export interface Activity {
@@ -58,7 +59,7 @@ export interface Notification {
   id: string
   title: string
   message: string
-  type: "info" | "warning" | "success" | "error"
+  type: "info" | "warning" | "error" | "success"
   read: boolean
   createdAt: string
   recipientId: string

@@ -1,9 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Bell } from "lucide-react"
+import { Bell } from 'lucide-react'
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,17 +15,16 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { getNotifications, markNotificationAsRead, type Notification } from "@/lib/actions"
 
-interface NotificationBadgeProps {
+interface NotificationBadgeProps extends React.HTMLAttributes<HTMLDivElement> {
   recipientId: string
   recipientType: "admin" | "client"
+  count: number
 }
 
-export function NotificationBadge({ recipientId, recipientType }: NotificationBadgeProps) {
+export function NotificationBadge({ recipientId, recipientType, count, className, ...props }: NotificationBadgeProps) {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isOpen, setIsOpen] = useState(false)
-
-  const unreadCount = notifications.filter((n) => !n.read).length
 
   useEffect(() => {
     const loadNotifications = async () => {
@@ -53,21 +53,14 @@ export function NotificationBadge({ recipientId, recipientType }: NotificationBa
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-5 w-5" />
-          <AnimatePresence>
-            {unreadCount > 0 && (
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                exit={{ scale: 0 }}
-                className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center"
-              >
-                {unreadCount}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </Button>
+        <div className={cn("relative", className)} {...props}>
+          <Bell className="h-6 w-6" />
+          {count > 0 && (
+            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs text-white">
+              {count}
+            </span>
+          )}
+        </div>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80">
         <DropdownMenuLabel>Notifications</DropdownMenuLabel>
