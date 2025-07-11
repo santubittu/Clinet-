@@ -1,53 +1,78 @@
--- Insert sample admin user (you'll need to create this user in Supabase Auth first)
--- Replace 'your-admin-user-id' with the actual UUID from Supabase Auth
+-- Insert sample admin users (you'll need to replace these UUIDs with actual auth user IDs)
 INSERT INTO admin_users (id, name, email, role, created_at) VALUES
-('00000000-0000-0000-0000-000000000000', 'Admin User', 'admin@santusahahero.com', 'admin', NOW())
+('00000000-0000-0000-0000-000000000001', 'Admin User', 'admin@santusahahero.com', 'admin', NOW()),
+('00000000-0000-0000-0000-000000000002', 'Manager User', 'manager@santusahahero.com', 'manager', NOW())
 ON CONFLICT (id) DO NOTHING;
 
 -- Insert sample clients
 INSERT INTO clients (id, name, email, phone, address, contact_person, username, status, documents, created_at, is_registered) VALUES
-('CLIENT001', 'Acme Corporation', 'contact@acme.com', '+1-555-0101', '123 Business St, City, State 12345', 'John Smith', 'acme_corp', 'active', 5, NOW() - INTERVAL '30 days', true),
-('CLIENT002', 'Tech Solutions Ltd', 'info@techsolutions.com', '+1-555-0102', '456 Tech Ave, City, State 12345', 'Sarah Johnson', 'tech_solutions', 'active', 3, NOW() - INTERVAL '20 days', true),
-('CLIENT003', 'Global Enterprises', 'admin@globalent.com', '+1-555-0103', '789 Enterprise Blvd, City, State 12345', 'Mike Wilson', 'global_ent', 'active', 7, NOW() - INTERVAL '15 days', true),
-('CLIENT004', 'Startup Inc', 'hello@startup.com', '+1-555-0104', '321 Innovation Dr, City, State 12345', 'Lisa Chen', 'startup_inc', 'pending', 0, NOW() - INTERVAL '5 days', false),
-('CLIENT005', 'Manufacturing Co', 'contact@manufacturing.com', '+1-555-0105', '654 Industrial Way, City, State 12345', 'Robert Brown', 'manufacturing_co', 'inactive', 2, NOW() - INTERVAL '45 days', true)
+('CLIENT123', 'ABC Corporation', 'contact@abccorp.com', '+1 (555) 123-4567', '123 Business Ave, Suite 100, New York, NY 10001', 'John Smith', 'abccorp2', 'active', 2, NOW() - INTERVAL '3 months', true),
+('CLIENT456', 'XYZ Enterprises', 'info@xyzent.com', '+1 (555) 987-6543', '456 Commerce St, Los Angeles, CA 90210', 'Jane Doe', 'xyzent', 'active', 1, NOW() - INTERVAL '2 months', true),
+('CLIENT789', 'LMN Limited', 'hello@lmnltd.com', '+1 (555) 555-0123', '789 Trade Blvd, Chicago, IL 60601', 'Bob Johnson', NULL, 'inactive', 3, NOW() - INTERVAL '6 months', false),
+('CLIENT321', 'PQR Inc', 'support@pqrinc.com', '+1 (555) 444-0987', '321 Industry Way, Houston, TX 77001', 'Alice Brown', NULL, 'active', 1, NOW() - INTERVAL '1 month', false),
+('CLIENT654', 'EFG Solutions', 'info@efgsolutions.com', '+1 (555) 333-0456', '654 Tech Park, Austin, TX 78701', 'Charlie Wilson', NULL, 'pending', 2, NOW() - INTERVAL '2 weeks', false)
+ON CONFLICT (id) DO NOTHING;
+
+-- Insert demo clients
+INSERT INTO clients (id, name, email, phone, address, contact_person, username, status, documents, created_at, is_registered) VALUES
+('ACME_CORP', 'ACME Corporation', 'client@acmecorp.com', '+1 (555) 123-4567', '123 Business St, City, State 12345', 'John Smith', 'abccorp', 'active', 2, NOW(), TRUE),
+('TECH_SOLUTIONS', 'Tech Solutions Inc', 'contact@techsolutions.com', '+1 (555) 987-6543', '456 Tech Ave, Innovation City, State 67890', 'Sarah Johnson', 'techsol', 'active', 1, NOW(), TRUE)
 ON CONFLICT (id) DO NOTHING;
 
 -- Insert sample documents
 INSERT INTO documents (id, name, type, client_id, size, viewed, downloaded, description, created_at) VALUES
-('DOC001', 'Q1 2024 Balance Sheet', 'Balance Sheet', 'CLIENT001', '2.3 MB', true, 3, 'First quarter balance sheet for 2024', NOW() - INTERVAL '10 days'),
-('DOC002', '2023 Tax Return', 'Tax Return', 'CLIENT001', '1.8 MB', true, 2, 'Annual tax return for 2023', NOW() - INTERVAL '25 days'),
-('DOC003', 'March 2024 GST Return', 'GST Return', 'CLIENT001', '0.9 MB', false, 0, 'GST return for March 2024', NOW() - INTERVAL '5 days'),
-('DOC004', 'Q4 2023 P&L Statement', 'P&L Statement', 'CLIENT002', '1.5 MB', true, 1, 'Profit and loss statement for Q4 2023', NOW() - INTERVAL '15 days'),
-('DOC005', 'Annual Financial Report 2023', 'Financial Report', 'CLIENT002', '4.2 MB', true, 4, 'Comprehensive financial report for 2023', NOW() - INTERVAL '20 days'),
-('DOC006', 'Tax Planning Strategy', 'Tax Planning', 'CLIENT003', '1.2 MB', true, 2, 'Tax planning recommendations for 2024', NOW() - INTERVAL '8 days'),
-('DOC007', 'Q1 2024 Financial Review', 'Financial Review', 'CLIENT003', '2.8 MB', false, 0, 'Quarterly financial review and analysis', NOW() - INTERVAL '3 days'),
-('DOC008', 'Audit Report 2023', 'Other', 'CLIENT005', '3.1 MB', true, 1, 'Independent audit report for 2023', NOW() - INTERVAL '40 days')
+('DOC001', 'Balance Sheet Q1 2024.pdf', 'Balance Sheet', 'CLIENT123', '1.2 MB', true, 2, 'Q1 2024 financial statements', NOW() - INTERVAL '1 week'),
+('DOC002', 'Tax Return 2023.pdf', 'Tax Return', 'CLIENT456', '3.5 MB', true, 1, 'Annual tax return filing', NOW() - INTERVAL '2 weeks'),
+('DOC003', 'GST Return Q4 2023.pdf', 'GST Return', 'CLIENT789', '0.8 MB', false, 0, 'Quarterly GST filing', NOW() - INTERVAL '3 weeks'),
+('DOC004', 'Profit & Loss Statement Q1 2024.pdf', 'P&L Statement', 'CLIENT123', '1.5 MB', true, 3, 'Q1 2024 P&L analysis', NOW() - INTERVAL '1 week'),
+('DOC005', 'Invoice #INV-2024-001.pdf', 'Invoice', 'CLIENT321', '0.5 MB', false, 0, 'Service invoice for March 2024', NOW() - INTERVAL '3 days'),
+('DOC006', 'Receipt #REC-2024-015.pdf', 'Receipt', 'CLIENT654', '0.3 MB', true, 1, 'Payment receipt', NOW() - INTERVAL '5 days'),
+('DOC007', 'Annual Report 2023.pdf', 'Other', 'CLIENT654', '2.1 MB', false, 0, 'Comprehensive annual report', NOW() - INTERVAL '1 month')
+ON CONFLICT (id) DO NOTHING;
+
+-- Insert demo documents
+INSERT INTO documents (id, name, type, client_id, size, viewed, downloaded, description, created_at) VALUES
+('DOC001', 'Financial Report Q1 2024', 'PDF', 'ACME_CORP', '2.5 MB', TRUE, 3, 'Quarterly financial report for Q1 2024', NOW()),
+('DOC002', 'Tax Documents 2023', 'PDF', 'ACME_CORP', '1.8 MB', FALSE, 0, 'Annual tax documents for 2023', NOW()),
+('DOC003', 'Investment Portfolio', 'Excel', 'TECH_SOLUTIONS', '3.2 MB', TRUE, 1, 'Current investment portfolio overview', NOW()),
+('DOC004', 'Balance Sheet Q1 2024.pdf', 'Balance Sheet', 'CLIENT123', '1.2 MB', true, 2, 'Q1 2024 financial statements', NOW() - INTERVAL '1 week'),
+('DOC005', 'Tax Return 2023.pdf', 'Tax Return', 'CLIENT456', '3.5 MB', true, 1, 'Annual tax return filing', NOW() - INTERVAL '2 weeks')
 ON CONFLICT (id) DO NOTHING;
 
 -- Insert sample activities
-INSERT INTO activities (id, action, details, "user", user_type, ip, created_at) VALUES
-('ACT001', 'Client login', 'Client Acme Corporation (CLIENT001) logged in', 'John Smith', 'client', '192.168.1.100', NOW() - INTERVAL '2 hours'),
-('ACT002', 'Document uploaded', 'Document "Q1 2024 Balance Sheet" uploaded for Acme Corporation (CLIENT001)', 'Admin User', 'admin', '192.168.1.50', NOW() - INTERVAL '10 days'),
-('ACT003', 'Document downloaded', 'Document "2023 Tax Return" downloaded', 'John Smith', 'client', '192.168.1.100', NOW() - INTERVAL '1 day'),
-('ACT004', 'Client created', 'New client account created: Startup Inc (CLIENT004)', 'Admin User', 'admin', '192.168.1.50', NOW() - INTERVAL '5 days'),
-('ACT005', 'Admin login', 'Admin Admin User logged in', 'Admin User', 'admin', '192.168.1.50', NOW() - INTERVAL '30 minutes'),
-('ACT006', 'Document viewed', 'Document "Annual Financial Report 2023" viewed', 'Sarah Johnson', 'client', '192.168.1.101', NOW() - INTERVAL '6 hours'),
-('ACT007', 'Client updated', 'Client Tech Solutions Ltd (CLIENT002) updated', 'Admin User', 'admin', '192.168.1.50', NOW() - INTERVAL '3 days'),
-('ACT008', 'Share link generated', 'Share link created for document "Tax Planning Strategy"', 'Admin User', 'admin', '192.168.1.50', NOW() - INTERVAL '8 days')
+INSERT INTO activities (id, action, details, user_name, user_type, ip, created_at) VALUES
+('ACT001', 'Document uploaded', 'Balance Sheet Q1 2024 for ABC Corporation', 'Admin User', 'admin', '192.168.1.1', NOW() - INTERVAL '1 week'),
+('ACT002', 'Client added', 'New client XYZ Enterprises registered', 'Manager User', 'admin', '192.168.1.2', NOW() - INTERVAL '2 months'),
+('ACT003', 'Document viewed', 'Balance Sheet Q1 2024.pdf', 'ABC Corporation', 'client', '192.168.1.3', NOW() - INTERVAL '3 days'),
+('ACT004', 'Client login', 'Client ABC Corporation logged in', 'ABC Corporation', 'client', '192.168.1.4', NOW() - INTERVAL '2 hours'),
+('ACT005', 'Document downloaded', 'Tax Return 2023.pdf', 'XYZ Enterprises', 'client', '192.168.1.5', NOW() - INTERVAL '1 day'),
+('ACT006', 'Admin login', 'Admin User logged in', 'Admin User', 'admin', '192.168.1.1', NOW() - INTERVAL '30 minutes'),
+('ACT007', 'Document shared', 'Invoice shared with PQR Inc', 'Admin User', 'admin', '192.168.1.1', NOW() - INTERVAL '3 days')
+ON CONFLICT (id) DO NOTHING;
+
+-- Insert demo activities
+INSERT INTO activities (id, action, details, user_name, user_type, ip, created_at) VALUES
+('ACT001', 'Client login', 'Client ACME Corporation logged in', 'abccorp', 'client', '192.168.1.100', NOW()),
+('ACT002', 'Document uploaded', 'Financial Report Q1 2024 uploaded for ACME Corporation', 'Admin User', 'admin', '192.168.1.50', NOW() - INTERVAL '1 hour'),
+('ACT003', 'Document downloaded', 'Tax Documents 2023 downloaded by ACME Corporation', 'abccorp', 'client', '192.168.1.100', NOW() - INTERVAL '2 hours'),
+('ACT004', 'Document viewed', 'Balance Sheet Q1 2024.pdf', 'ABC Corporation', 'client', '192.168.1.3', NOW() - INTERVAL '3 days'),
+('ACT005', 'Admin login', 'Admin User logged in', 'Admin User', 'admin', '192.168.1.1', NOW() - INTERVAL '30 minutes')
 ON CONFLICT (id) DO NOTHING;
 
 -- Insert sample notifications
-INSERT INTO notifications (id, title, message, type, read, recipient_id, recipient_type, created_at) VALUES
-('NOT001', 'New Document Available', 'A new document "Q1 2024 Balance Sheet" has been uploaded to your account.', 'info', true, 'CLIENT001', 'client', NOW() - INTERVAL '10 days'),
-('NOT002', 'Welcome to Santu Saha Hero', 'Your account has been created. You can now access your financial documents securely.', 'info', false, 'CLIENT004', 'client', NOW() - INTERVAL '5 days'),
-('NOT003', 'Document Shared', 'A new document "Tax Planning Strategy" has been shared with you.', 'info', true, 'CLIENT003', 'client', NOW() - INTERVAL '8 days'),
-('NOT004', 'System Maintenance', 'Scheduled maintenance will occur on Sunday from 2-4 AM EST.', 'warning', false, 'CLIENT001', 'client', NOW() - INTERVAL '2 days'),
-('NOT005', 'Password Changed', 'Your password has been successfully updated.', 'success', true, 'CLIENT002', 'client', NOW() - INTERVAL '1 day'),
-('NOT006', 'New Document Available', 'A new document "Q1 2024 Financial Review" has been uploaded to your account.', 'info', false, 'CLIENT003', 'client', NOW() - INTERVAL '3 days')
+INSERT INTO notifications (id, title, message, type, recipient_id, recipient_type, read, created_at) VALUES
+('NOT001', 'New document available', 'Your Q1 2024 financial statements have been uploaded', 'info', 'CLIENT123', 'client', false, NOW() - INTERVAL '1 week'),
+('NOT002', 'GST Return reminder', 'Your Q1 2024 GST Return is due in 7 days', 'warning', 'CLIENT456', 'client', false, NOW() - INTERVAL '3 days'),
+('NOT003', 'Welcome to Santu Saha Hero', 'Your account has been created successfully', 'success', 'CLIENT321', 'client', true, NOW() - INTERVAL '1 month'),
+('NOT004', 'Document viewed', 'Your Balance Sheet Q1 2024 has been viewed', 'info', 'CLIENT123', 'client', true, NOW() - INTERVAL '3 days'),
+('NOT005', 'Password reset', 'Your password has been reset successfully', 'warning', 'CLIENT654', 'client', false, NOW() - INTERVAL '2 days'),
+('NOT006', 'New client registered', 'EFG Solutions has completed registration', 'info', '00000000-0000-0000-0000-000000000001', 'admin', false, NOW() - INTERVAL '2 weeks')
 ON CONFLICT (id) DO NOTHING;
 
--- Update client document counts based on actual documents
-UPDATE clients SET documents = (
-    SELECT COUNT(*) FROM documents WHERE documents.client_id = clients.id
-);
+-- Insert demo notifications
+INSERT INTO notifications (id, title, message, type, read, recipient_id, recipient_type, created_at) VALUES
+('NOT001', 'New Document Available', 'A new financial report has been uploaded to your account.', 'info', FALSE, 'ACME_CORP', 'client', NOW()),
+('NOT002', 'Account Update', 'Your account information has been successfully updated.', 'success', TRUE, 'ACME_CORP', 'client', NOW() - INTERVAL '1 day'),
+('NOT003', 'Welcome to Santu Saha Hero', 'Your account has been created successfully', 'success', 'CLIENT123', 'client', true, NOW() - INTERVAL '1 month'),
+('NOT004', 'GST Return reminder', 'Your Q1 2024 GST Return is due in 7 days', 'warning', 'CLIENT456', 'client', false, NOW() - INTERVAL '3 days')
+ON CONFLICT (id) DO NOTHING;

@@ -10,60 +10,49 @@ import { Loader2 } from "lucide-react"
 interface AuthCheckProps {
   children: React.ReactNode
   requiredRole?: "admin" | "client"
-  redirectTo?: string
 }
 
-export function AuthCheck({ children, requiredRole, redirectTo = "/login" }: AuthCheckProps) {
+export default function AuthCheck({ children, requiredRole }: AuthCheckProps) {
   const [isLoading, setIsLoading] = useState(true)
-  const [isAuthorized, setIsAuthorized] = useState(false)
+  const [user, setUser] = useState<any>(null)
   const router = useRouter()
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const user = await getCurrentUser()
+        const currentUser = await getCurrentUser()
 
-        if (!user) {
-          router.push(redirectTo)
+        if (!currentUser) {
+          router.push("/login")
           return
         }
 
-        if (requiredRole && user.role !== requiredRole) {
-          // Redirect to appropriate dashboard based on user role
-          if (user.role === "admin") {
-            router.push("/admin/dashboard")
-          } else if (user.role === "client") {
-            router.push("/client/dashboard")
-          } else {
-            router.push(redirectTo)
-          }
+        if (requiredRole && currentUser.role !== requiredRole) {
+          router.push("/login")
           return
         }
 
-        setIsAuthorized(true)
+        setUser(currentUser)
       } catch (error) {
-        console.error("Auth check failed:", error)
-        router.push(redirectTo)
+        console.error("Auth check error:", error)
+        router.push("/login")
       } finally {
         setIsLoading(false)
       }
     }
 
     checkAuth()
-  }, [requiredRole, redirectTo, router])
+  }, [router, requiredRole])
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
-          <p className="text-gray-600">Loading...</p>
-        </div>
+        <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     )
   }
 
-  if (!isAuthorized) {
+  if (!user) {
     return null
   }
 

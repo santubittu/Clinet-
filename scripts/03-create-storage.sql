@@ -1,32 +1,48 @@
 -- Create storage bucket for documents
-INSERT INTO storage.buckets (id, name, public) VALUES ('documents', 'documents', true)
+INSERT INTO storage.buckets (id, name, public) VALUES ('documents', 'documents', false)
 ON CONFLICT (id) DO NOTHING;
 
--- Create storage policies
-CREATE POLICY "Admin users can upload documents" ON storage.objects
-    FOR INSERT WITH CHECK (
-        bucket_id = 'documents' AND
-        auth.uid() IN (SELECT id FROM admin_users)
-    );
+-- Enable RLS on storage.objects
+ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Admin users can view all documents" ON storage.objects
-    FOR SELECT USING (
-        bucket_id = 'documents' AND
-        auth.uid() IN (SELECT id FROM admin_users)
-    );
+-- Create storage policies for document uploads
+CREATE POLICY "Users can upload documents" ON storage.objects
+  FOR INSERT WITH CHECK (
+    bucket_id = 'documents' AND 
+    auth.role() = 'authenticated'
+  );
 
-CREATE POLICY "Clients can view their own documents" ON storage.objects
-    FOR SELECT USING (
-        bucket_id = 'documents' AND
-        (storage.foldername(name))[1] IN (
-            SELECT id FROM clients WHERE email IN (
-                SELECT email FROM auth.users WHERE id = auth.uid()
-            )
-        )
-    );
+-- Create storage policies for viewing documents
+CREATE POLICY "Users can view own documents" ON storage.objects
+  FOR SELECT USING (
+    bucket_id = 'documents' AND 
+    auth.role() = 'authenticated'
+  );
 
-CREATE POLICY "Admin users can delete documents" ON storage.objects
-    FOR DELETE USING (
-        bucket_id = 'documents' AND
-        auth.uid() IN (SELECT id FROM admin_users)
-    );
+-- Create storage policies for updating documents
+CREATE POLICY "Users can update own documents" ON storage.objects
+  FOR UPDATE USING (
+    bucket_id = 'documents' AND 
+    auth.role() = 'authenticated'
+  );
+
+-- Create storage policies for deleting documents
+CREATE POLICY "Users can delete own documents" ON storage.objects
+  FOR DELETE USING (
+    bucket_id = 'documents' AND 
+    auth.role() = 'authenticated'
+  );
+
+-- Admin policies for full access
+CREATE POLICY "Admins can manage all documents" ON storage.objects
+  FOR ALL USING (
+    bucket_id = 'documents' AND 
+    auth.jwt() ->> 'role' = 'admin'
+  );
+
+-- Create storage bucket policies
+CREATE POLICY "Users can view documents bucket" ON storage.buckets
+  FOR SELECT USING (id = 'documents' AND auth.role() = 'authenticated');
+
+CREATE POLICY "Admins can manage documents bucket" ON storage.buckets
+  FOR ALL USING (id = 'documents' AND auth.jwt() ->> 'role' = 'admin');

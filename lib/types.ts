@@ -1,10 +1,10 @@
-export interface AdminUser {
+export interface User {
   id: string
-  name: string
   email: string
-  role: "admin" | "manager" | "uploader"
-  createdAt: string
-  lastLogin?: string
+  username?: string
+  role: "admin" | "client"
+  client_id?: string
+  created_at: string
 }
 
 export interface Client {
@@ -25,15 +25,7 @@ export interface Client {
 export interface Document {
   id: string
   name: string
-  type:
-    | "Balance Sheet"
-    | "Tax Return"
-    | "GST Return"
-    | "P&L Statement"
-    | "Financial Report"
-    | "Tax Planning"
-    | "Financial Review"
-    | "Other"
+  type: string
   client: string
   clientId: string
   uploadDate: string
@@ -48,11 +40,11 @@ export interface Document {
 export interface Activity {
   id: string
   action: string
-  details?: string
+  details: string
   user: string
   userType: "admin" | "client"
   timestamp: string
-  ip?: string
+  ip: string
 }
 
 export interface Notification {
